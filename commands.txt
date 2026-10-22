@@ -1,0 +1,66 @@
+price_distance.py — Command Reference
+for distance only Use
+distance.py
+
+1. Install dependency
+
+python3 -m pip install pandas
+
+2. Basic commands
+Run with all defaults:
+
+python3 price_distance.py delta_data.csv
+
+Show all price-level crossing events:
+
+python3 price_distance.py delta_data.csv --events
+
+3. Time range options
+Specify start time only:
+
+python3 price_distance.py delta_data.csv --start "9/1/2026 9:00:00 AM"
+
+Specify end time only:
+
+python3 price_distance.py delta_data.csv --end "9/1/2026 3:30:00 PM"
+
+Specify both start and end times:
+
+python3 price_distance.py delta_data.csv --start "9/1/2026 9:00:00 AM" --end "9/1/2026 3:30:00 PM"
+
+If omitted, the start and end default to the first and last timestamps in the CSV, respectively.
+
+4. Base and step options
+Specify a custom base price:
+
+python3 price_distance.py delta_data.csv --base 2410
+
+Specify a custom step size:
+
+python3 price_distance.py delta_data.csv --step 5
+
+Specify both base and step:
+
+python3 price_distance.py delta_data.csv --base 2410 --step 5
+
+If omitted, the base defaults to the first price level that is a multiple of the step within the selected time range, and the step defaults to 10.
+
+5. Combined examples
+Custom time range, base, and step, with events:
+
+python3 price_distance.py delta_data.csv \
+  --start "9/1/2026 9:00:00 AM" \
+  --end "9/1/2026 3:30:00 PM" \
+  --base 2410 \
+  --step 10 \
+  --events
+
+Use a different CSV file:
+
+python3 price_distance.py another_day.csv --events
+
+Use a custom base and step without displaying events:
+
+python3 price_distance.py delta_data.csv --base 2400 --step 20
+
+python price_distance.py input.csv --base 2410 --step 10 --upper-range 2430 --events

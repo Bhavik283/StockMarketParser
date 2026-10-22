@@ -1,0 +1,41 @@
+Rows in selected range : 219287
+Selected time range    : 2026-09-01 00:00:00.209164 to 2026-09-01 23:59:54.592690
+Base                   : 2470
+Step                   : 10
+Price range             : ±50 around base
+Effective lower bound   : 2420
+Effective upper bound   : 2520
+Maximum price          : 2484.7
+Minimum price          : 2381.7
+Levels reached         : 22
+Total distance         : 210
+Base-close profit      : 20 per holding closed at base (total, not additional)
+Realized profit        : 110
+Open BUY positions     : 5
+Open SELL positions    : 0
+
+Price-level events and position simulation:
+Timestamp                        Level Action                  Trade P/L    Total P/L   Open BUY   Open SELL
+------------------------------------------------------------------------------------------------------------
+2026-09-01 00:09:08.326931        2470 BASE                            0            0          0           0
+2026-09-01 01:26:39.220997        2460 BUY (open)                      0            0          1           0
+2026-09-01 03:32:17.174719        2470 SELL (close BUY)               20           20          0           0
+2026-09-01 03:35:09.200636        2480 SELL (open)                     0           20          0           1
+2026-09-01 04:06:53.881354        2470 BUY (close SELL)               20           40          0           0
+2026-09-01 05:39:02.613857        2480 SELL (open)                     0           40          0           1
+2026-09-01 07:37:22.770343        2470 BUY (close SELL)               20           60          0           0
+2026-09-01 08:08:49.464713        2460 BUY (open)                      0           60          1           0
+2026-09-01 08:28:08.047982        2450 BUY (open)                      0           60          2           0
+2026-09-01 10:32:07.958253        2460 SELL (close BUY)               10           70          1           0
+2026-09-01 12:31:46.100251        2450 BUY (open)                      0           70          2           0
+2026-09-01 12:40:11.705625        2440 BUY (open)                      0           70          3           0
+2026-09-01 13:06:49.153635        2430 BUY (open)                      0           70          4           0
+2026-09-01 13:09:01.686000        2440 SELL (close BUY)               10           80          3           0
+2026-09-01 14:01:45.913945        2450 SELL (close BUY)               10           90          2           0
+2026-09-01 15:02:39.817938        2440 BUY (open)                      0           90          3           0
+2026-09-01 15:49:57.762619        2450 SELL (close BUY)               10          100          2           0
+2026-09-01 16:09:31.573520        2440 BUY (open)                      0          100          3           0
+2026-09-01 16:20:55.858328        2430 BUY (open)                      0          100          4           0
+2026-09-01 16:36:57.094554        2420 BUY (open)                      0          100          5           0
+2026-09-01 16:39:12.355515        2430 SELL (close BUY)               10          110          4           0
+2026-09-01 17:57:51.219718        2420 BUY (open)                      0          110          5           0
