@@ -75,13 +75,13 @@ def first_default_base(df, step):
 
 
 def build_events(df, base, step, price_range=50.0):
-    """Emit actions only when the next grid level from the current level is crossed.
+    """Emit one action for every grid level crossed from the current level.
 
     The tracked level is stateful: after reaching 2400 from 2410, prices such as
     2399, 2403, and 2405 do not change the tracked level. The next upward event
     requires reaching 2410; the next downward event requires reaching 2390.
     This prevents raw-price band changes from generating premature/repeated
-    actions. Large jumps intentionally emit at most one event per CSV interval.
+    actions. Multi-level jumps emit each action at the observed ending price.
     """
     events = []  # (timestamp, level, direction): +1 up/SELL, -1 down/BUY, 0 base
     lower_range = base - price_range if price_range > 0 else None
@@ -130,27 +130,33 @@ def build_events(df, base, step, price_range=50.0):
             previous_timestamp, previous_price = timestamp, price
             continue
 
-        # Only the adjacent level from the last reached level is actionable.
-        # Do not infer extra levels if one sample jumps over several steps.
+        crossed_levels = []
         if price > previous_price:
             target_level = current_level + step
-            crossed = previous_price < target_level and price >= target_level
             direction = 1
+            while previous_price < target_level and price >= target_level:
+                crossed_levels.append(target_level)
+                target_level += step
         elif price < previous_price:
             target_level = current_level - step
-            crossed = previous_price > target_level and price <= target_level
             direction = -1
+            while previous_price > target_level and price <= target_level:
+                crossed_levels.append(target_level)
+                target_level -= step
         else:
-            crossed = False
-            target_level = current_level
             direction = 0
 
-        if crossed:
+        if len(crossed_levels) == 1:
+            level = crossed_levels[0]
             ts = crossing_time(
-                previous_timestamp, timestamp, previous_price, price, target_level
+                previous_timestamp, timestamp, previous_price, price, level
             )
-            events.append((ts, target_level, direction))
-            current_level = target_level
+            events.append((ts, level, direction))
+        elif crossed_levels:
+            # A jump fills every crossed position at the observed ending price.
+            events.extend((timestamp, price, direction) for _ in crossed_levels)
+        if crossed_levels:
+            current_level = crossed_levels[-1]
 
         previous_timestamp, previous_price = timestamp, price
 
