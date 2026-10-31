@@ -83,7 +83,7 @@ def build_events(df, base, step, price_range=50.0):
     This prevents raw-price band changes from generating premature/repeated
     actions. Multi-level jumps emit each action at the observed ending price.
     """
-    events = []  # (timestamp, level, direction): +1 up/SELL, -1 down/BUY, 0 base
+    events = []  # (timestamp, level, direction, execution_price)
     lower_range = base - price_range if price_range > 0 else None
     upper_range = base + price_range if price_range > 0 else None
     active = False
@@ -92,7 +92,7 @@ def build_events(df, base, step, price_range=50.0):
     previous_price = float(df.iloc[0]["price"])
 
     if close(previous_price, base):
-        events.append((previous_timestamp, base, 0))
+        events.append((previous_timestamp, base, 0, previous_price))
         active = True
         current_level = base
 
@@ -109,15 +109,14 @@ def build_events(df, base, step, price_range=50.0):
                 ts = timestamp if close(price, base) else crossing_time(
                     previous_timestamp, timestamp, previous_price, price, base
                 )
-                events.append((ts, base, 0))
+                events.append((ts, base, 0, base))
                 active = True
                 current_level = base
-            previous_timestamp, previous_price = timestamp, price
-            continue
+                previous_timestamp, previous_price = ts, base
+            else:
+                previous_timestamp, previous_price = timestamp, price
+                continue
 
-        # While the observed price is outside the permitted range, pause trading.
-        # Also skip the interval that enters or exits the range: re-entry itself
-        # must not create a trade. The tracked level is retained while paused.
         previous_in_range = (
             (lower_range is None or previous_price >= lower_range or close(previous_price, lower_range))
             and (upper_range is None or previous_price <= upper_range or close(previous_price, upper_range))
@@ -126,7 +125,9 @@ def build_events(df, base, step, price_range=50.0):
             (lower_range is None or price >= lower_range or close(price, lower_range))
             and (upper_range is None or price <= upper_range or close(price, upper_range))
         )
-        if not previous_in_range or not current_in_range:
+        # Ignore intervals that stay outside the range, but process jumps that
+        # enter or leave it so crossed in-range steps are not lost.
+        if not previous_in_range and not current_in_range:
             previous_timestamp, previous_price = timestamp, price
             continue
 
@@ -134,13 +135,21 @@ def build_events(df, base, step, price_range=50.0):
         if price > previous_price:
             target_level = current_level + step
             direction = 1
-            while previous_price < target_level and price >= target_level:
+            while (
+                previous_price < target_level
+                and price >= target_level
+                and (upper_range is None or target_level <= upper_range or close(target_level, upper_range))
+            ):
                 crossed_levels.append(target_level)
                 target_level += step
         elif price < previous_price:
             target_level = current_level - step
             direction = -1
-            while previous_price > target_level and price <= target_level:
+            while (
+                previous_price > target_level
+                and price <= target_level
+                and (lower_range is None or target_level >= lower_range or close(target_level, lower_range))
+            ):
                 crossed_levels.append(target_level)
                 target_level -= step
         else:
@@ -148,13 +157,13 @@ def build_events(df, base, step, price_range=50.0):
 
         if len(crossed_levels) == 1:
             level = crossed_levels[0]
-            ts = crossing_time(
-                previous_timestamp, timestamp, previous_price, price, level
-            )
-            events.append((ts, level, direction))
+            events.append((timestamp, level, direction, price))
         elif crossed_levels:
-            # A jump fills every crossed position at the observed ending price.
-            events.extend((timestamp, price, direction) for _ in crossed_levels)
+            # Keep each grid level for reporting, but fill all jumped positions
+            # at the observed ending price.
+            events.extend(
+                (timestamp, level, direction, price) for level in crossed_levels
+            )
         if crossed_levels:
             current_level = crossed_levels[-1]
 
@@ -163,13 +172,13 @@ def build_events(df, base, step, price_range=50.0):
     return events
 
 
-def simulate_positions(events):
+def simulate_positions(events, base):
     """Up-level change => SELL; down-level change => BUY; opposite side closes LIFO."""
     open_positions = []
     rows = []
     realized_profit = 0.0
 
-    for i, (timestamp, level, direction) in enumerate(events):
+    for timestamp, level, direction, execution_price in events:
         action = "BASE" if direction == 0 else ("SELL" if direction > 0 else "BUY")
         trade_profit = 0.0
 
@@ -178,20 +187,24 @@ def simulate_positions(events):
                           if open_positions[j]["side"] == "SELL"), None)
             if match is not None:
                 position = open_positions.pop(match)
-                trade_profit = position["entry_level"] - level
+                trade_profit = position["entry_price"] - execution_price
+                if close(level, base):
+                    trade_profit *= 2
                 action = "BUY (close SELL)"
             else:
-                open_positions.append({"side": "BUY", "entry_level": level, "entry_time": timestamp})
+                open_positions.append({"side": "BUY", "entry_price": execution_price, "entry_time": timestamp})
                 action = "BUY (open)"
         elif action == "SELL":
             match = next((j for j in range(len(open_positions) - 1, -1, -1)
                           if open_positions[j]["side"] == "BUY"), None)
             if match is not None:
                 position = open_positions.pop(match)
-                trade_profit = level - position["entry_level"]
+                trade_profit = execution_price - position["entry_price"]
+                if close(level, base):
+                    trade_profit *= 2
                 action = "SELL (close BUY)"
             else:
-                open_positions.append({"side": "SELL", "entry_level": level, "entry_time": timestamp})
+                open_positions.append({"side": "SELL", "entry_price": execution_price, "entry_time": timestamp})
                 action = "SELL (open)"
 
         realized_profit += trade_profit
@@ -252,7 +265,7 @@ def main():
         sys.exit(f"Base {base:g} was not reached in the selected time range. Try another --base or time range.")
 
     total_distance = sum(abs(events[i][1] - events[i - 1][1]) for i in range(1, len(events)))
-    sim_rows, open_positions, realized_profit = simulate_positions(events)
+    sim_rows, open_positions, realized_profit = simulate_positions(events, base)
 
     report = io.StringIO()
     with redirect_stdout(report):

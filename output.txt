@@ -9,7 +9,6 @@ Maximum price          : 2484.7
 Minimum price          : 2381.7
 Levels reached         : 22
 Total distance         : 210
-Base-close profit      : 20 per holding closed at base (total, not additional)
 Realized profit        : 110
 Open BUY positions     : 5
 Open SELL positions    : 0
