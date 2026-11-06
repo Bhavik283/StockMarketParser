@@ -64,3 +64,20 @@ Use a custom base and step without displaying events:
 python3 price_distance.py delta_data.csv --base 2400 --step 20
 
 python price_distance.py input.csv --base 2410 --step 10 --upper-range 2430 --events
+
+price_range.py — Command Reference (OHLC data)
+for crude-oil or other OHLC data use
+price_range.py
+
+Run with defaults:
+
+python3 price_range.py delta_data.csv
+
+Show every level change, fill price, and position action:
+
+python3 price_range.py delta_data.csv --events
+
+Use the same --start, --end, --base, --step, --range, and --output options as price_distance.py.
+The CSV must contain timestamp, open, high, low, and close columns. Downward BUY fills use
+the bar low; upward SELL fills use the bar high. Bars that reach both the next BUY and SELL
+levels are skipped as ambiguous.

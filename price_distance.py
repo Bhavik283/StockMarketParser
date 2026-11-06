@@ -26,7 +26,18 @@ def parse_args():
 
 
 def parse_time(value):
-    return None if value is None else pd.to_datetime(value, errors="raise")
+    return None if value is None else parse_timestamp(value, errors="raise")
+
+
+def parse_timestamp(value, errors="coerce"):
+    if pd.isna(value):
+        return pd.NaT
+
+    text = str(value).strip()
+    numeric_text = text[:-2] if text.endswith(".0") else text
+    if numeric_text.isdecimal() and len(numeric_text) == 16:
+        return pd.to_datetime(int(numeric_text), unit="us", errors=errors)
+    return pd.to_datetime(value, format="mixed", errors=errors)
 
 
 def close(a, b):
@@ -237,7 +248,7 @@ def main():
     if "timestamp" not in columns or "price" not in columns:
         sys.exit('CSV must contain columns named "timestamp" and "price".')
     df = df.rename(columns={columns["timestamp"]: "timestamp", columns["price"]: "price"})
-    df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed", errors="coerce")
+    df["timestamp"] = df["timestamp"].map(parse_timestamp)
     df["price"] = pd.to_numeric(df["price"], errors="coerce")
     df = df.dropna(subset=["timestamp", "price"]).sort_values("timestamp").reset_index(drop=True)
     if df.empty:
